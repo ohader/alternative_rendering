@@ -43,6 +43,7 @@ class PageView extends AbstractView {
 	 * @param int $languageUid
 	 */
 	public function __construct($pageUid, $pageType = 0, $languageUid = 0) {
+		parent::__construct();
 		$this->setPageUid($pageUid);
 		$this->setPageType($pageType);
 		$this->setLanguageUid($languageUid);
@@ -106,7 +107,7 @@ class PageView extends AbstractView {
 			. (!empty($this->pageType) ? '&type=' . $this->pageType : '')
 			. (!empty($this->languageUid) ? '&L=' . $this->languageUid : '');
 		$content = GeneralUtility::getUrl($uri);
-		$this->setContent($content);
+		$this->getRenderingContext()->setContent($content);
 	}
 
 }

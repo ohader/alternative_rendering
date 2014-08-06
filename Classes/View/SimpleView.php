@@ -24,7 +24,8 @@ class SimpleView extends AbstractView {
 	 * @param string $content
 	 */
 	public function __construct($content) {
-		$this->setContent($content);
+		parent::__construct();
+		$this->getRenderingContext()->setContent($content);
 	}
 
 	/**

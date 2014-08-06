@@ -14,7 +14,9 @@ namespace OliverHader\AlternativeRendering\View;
  * The TYPO3 project - inspiring people to share!
  */
 
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
+use OliverHader\AlternativeRendering\RenderingContext;
 
 /**
  * AbstractView
@@ -37,22 +39,23 @@ abstract class AbstractView {
 	const INDICATOR_IteratorStartPattern = 'iterator:(?P<path>[^(}#]+)\((?P<name>[^)}#]+)\)';
 	const INDICATOR_IteratorInnerPattern = '(?P<inner>.+?)';
 	const INDICATOR_IteratorEndPattern = '/iterator:\1';
-	const INDICATOR_VariableFormatPatter = '\((?P<format>[^)]+)\)$';
+	const INDICATOR_VariableFormatPattern = '\((?P<format>[^)]+)\)$';
 
 	/**
-	 * @var string
+	 * @var RenderingContext
 	 */
-	protected $content;
-
-	/**
-	 * @var array
-	 */
-	protected $variables = array();
+	protected $renderingContext;
 
 	/**
 	 * @var bool
 	 */
 	protected $substituteUnknownVariables = TRUE;
+
+	public function __construct() {
+		$this->setRenderingContext(
+			self::createRenderingContext()
+		);
+	}
 
 	/**
 	 * @return NULL|string
@@ -60,18 +63,18 @@ abstract class AbstractView {
 	abstract public function render();
 
 	/**
-	 * @return string
+	 * @return RenderingContext
 	 */
-	public function getContent() {
-		return $this->content;
+	public function getRenderingContext() {
+		return $this->renderingContext;
 	}
 
 	/**
-	 * @param string $content
+	 * @param RenderingContext $renderingContext
 	 * @return AbstractView
 	 */
-	public function setContent($content) {
-		$this->content = $content;
+	public function setRenderingContext(RenderingContext $renderingContext) {
+		$this->renderingContext = $renderingContext;
 		return $this;
 	}
 
@@ -93,103 +96,95 @@ abstract class AbstractView {
 	 */
 	public function assign($key, $value) {
 		$key = strtolower($key);
-		$this->variables[$key] = $value;
+		$this->renderingContext->setVariable($key, $value);
 		return $this;
 	}
 
 	/**
-	 * @param NULL|string $content
+	 * @param RenderingContext $renderingContext
 	 * @return NULL|string
 	 */
-	protected function substitute($content = NULL) {
-		if ($content === NULL) {
-			$content = $this->getContent();
+	protected function substitute(RenderingContext $renderingContext = NULL) {
+		if ($renderingContext === NULL) {
+			$renderingContext = $this->renderingContext;
 		}
 
-		if (!self::isSubstitutionRequired($content)) {
-			return $content;
+		if (!self::isSubstitutionRequired($renderingContext->getContent())) {
+			return $renderingContext->getContent();
 		}
 
-		$search = array();
-		$replace = array();
+		$this->substituteIterator($renderingContext);
+		$this->substituteVariables($renderingContext);
 
-		$this->substituteIterator($content, $search, $replace);
-		$this->substituteVariables($content, $search, $replace);
-		$content = str_replace($search, $replace, $content);
-
-		return $content;
+		return $renderingContext->replace();
 	}
 
 	/**
-	 * @param string $content
-	 * @param array $search
-	 * @param array $replace
+	 * @param RenderingContext $renderingContext
 	 */
-	protected function substituteIterator($content, array &$search, array &$replace) {
+	protected function substituteIterator(RenderingContext $renderingContext) {
 		$pattern = preg_quote(self::INDICATOR_Start, '!')
 			. self::INDICATOR_IteratorStartPattern . preg_quote(self::INDICATOR_End, '!')
 				. self::INDICATOR_IteratorInnerPattern
 			. preg_quote(self::INDICATOR_Start, '!')
 				. self::INDICATOR_IteratorEndPattern . preg_quote(self::INDICATOR_End, '!');
 
-		if (preg_match_all('!' . $pattern . '!mis', $content, $matches)) {
-			$variables = $this->variables;
+		if (preg_match_all('!' . $pattern . '!mis', $renderingContext->getContent(), $matches)) {
 			foreach ($matches[0] as $index => $iteratorPartial) {
 				$iteratorContent = '';
-				$iterator = $this->resolveVariable($matches['path'][$index], FALSE);
+				$iterator = self::resolveVariable($renderingContext->getVariables(), $matches['path'][$index], FALSE);
 
 				if (is_array($iterator) || $iterator instanceof \Traversable) {
 					foreach ($iterator as $value) {
 						$iteratorVariables = array_merge(
-							(array)$this->variables['iterator'],
+							(array)$renderingContext->getVariables('iterator'),
 							array($matches['name'][$index] => $value)
 						);
 
-						$this->assign('iterator', $iteratorVariables);
-						$iteratorContent .= $this->substitute($matches['inner'][$index]);
+						$iteratorRenderingContext = self::createRenderingContext()
+							->setVariables($renderingContext->getVariables())
+							->setVariable('iterator', $iteratorVariables)
+							->setContent($matches['inner'][$index]);
+						$iteratorContent .= $this->substitute($iteratorRenderingContext);
 					}
 				}
 
-				$search[] = $iteratorPartial;
-				$replace[] = $iteratorContent;
+				$renderingContext->addReplacement($iteratorPartial, $iteratorContent);
 			}
-			$this->variables = $variables;
 		}
 	}
 
 	/**
-	 * @param string $content
-	 * @param array $search
-	 * @param array $replace
+	 * @param RenderingContext $renderingContext
 	 */
-	protected function substituteVariables($content, array &$search, array &$replace) {
+	protected function substituteVariables(RenderingContext $renderingContext) {
 		$pattern = preg_quote(self::INDICATOR_Start, '!') . self::INDICATOR_InnerPattern . preg_quote(self::INDICATOR_End, '!');
-		if (preg_match_all('!' . $pattern . '!', $content, $matches)) {
+		if (preg_match_all('!' . $pattern . '!', $renderingContext->getContent(), $matches)) {
 			foreach ($matches['0'] as $index => $variablePartial) {
-				$value = $this->resolveVariable($matches['inner'][$index]);
+				$value = self::resolveVariable($renderingContext->getVariables(), $matches['inner'][$index]);
 
 				if ($this->getSubstituteUnknownVariables() || $value !== NULL) {
-					$search[] = $variablePartial;
-					$replace[] = $value;
+					$renderingContext->addReplacement($variablePartial, $value);
 				}
 			}
 		}
 	}
 
 	/**
+	 * @param array $variables
 	 * @param string $path
 	 * @param boolean $toString
 	 * @return NULL|\DateTime|string
 	 */
-	protected function resolveVariable($path, $toString = TRUE) {
+	static public function resolveVariable(array $variables, $path, $toString = TRUE) {
 		$format = NULL;
 
-		if (preg_match('!' . self::INDICATOR_VariableFormatPatter . '!', $path, $matches)) {
+		if (preg_match('!' . self::INDICATOR_VariableFormatPattern . '!', $path, $matches)) {
 			$format = $matches['format'];
 			$path = str_replace($matches[0], '', $path);
 		}
 
-		$value = ObjectAccess::getPropertyPath($this->variables, $path);
+		$value = ObjectAccess::getPropertyPath($variables, $path);
 
 		if ($value instanceof \DateTime) {
 			$format = $format ?: 'Y-m-d';
@@ -209,6 +204,15 @@ abstract class AbstractView {
 	 */
 	static public function isSubstitutionRequired($content) {
 		return (strpos($content, self::INDICATOR_Start) !== FALSE && strpos($content, self::INDICATOR_End) !== FALSE);
+	}
+
+	/**
+	 * @return RenderingContext
+	 */
+	static public function createRenderingContext() {
+		return GeneralUtility::makeInstance(
+			'OliverHader\\AlternativeRendering\\RenderingContext'
+		);
 	}
 
 }
