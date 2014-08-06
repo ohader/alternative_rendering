@@ -1,0 +1,3 @@
+[submodule "Resources/Private/Php/Emogrifier"]
+	path = Resources/Private/Php/Emogrifier
+	url = https://github.com/jjriv/emogrifier.git
