@@ -14,6 +14,7 @@ namespace OliverHader\AlternativeRendering\View;
  * The TYPO3 project - inspiring people to share!
  */
 
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
 use OliverHader\AlternativeRendering\RenderingContext;
 
@@ -144,11 +145,28 @@ abstract class AbstractView {
 			$path = str_replace($matches[0], '', $path);
 		}
 
-		$value = ObjectAccess::getPropertyPath($variables, $path);
+		$value = self::resolveVariableValue($variables, $path);
 
 		if ($value instanceof \DateTime) {
 			$format = $format ?: 'Y-m-d';
 			$value = $value->format($format);
+		}
+
+		return $value;
+	}
+
+	static public function resolveVariableValue(array $variables, $path) {
+		$value = ObjectAccess::getPropertyPath($variables, $path);
+
+		// Try again with properties like "what_ever"
+		// converted to lower camel-case like "whatEver"
+		if ($value === NULL) {
+			$steps = explode('.', $path);
+			foreach ($steps as &$step) {
+				$step = GeneralUtility::underscoredToLowerCamelCase($step);
+			}
+			$path = implode('.', $steps);
+			$value = ObjectAccess::getPropertyPath($variables, $path);
 		}
 
 		return $value;
