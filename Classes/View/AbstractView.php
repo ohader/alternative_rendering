@@ -14,7 +14,6 @@ namespace OliverHader\AlternativeRendering\View;
  * The TYPO3 project - inspiring people to share!
  */
 
-use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Reflection\ObjectAccess;
 use OliverHader\AlternativeRendering\RenderingContext;
 
@@ -36,9 +35,6 @@ abstract class AbstractView {
 	const INDICATOR_Start = '#{';
 	const INDICATOR_InnerPattern = '(?P<inner>[^#]+)';
 	const INDICATOR_End = '}#';
-	const INDICATOR_IteratorStartPattern = 'iterator:(?P<path>[^(}#]+)\((?P<name>[^)}#]+)\)';
-	const INDICATOR_IteratorInnerPattern = '(?P<inner>.+?)';
-	const INDICATOR_IteratorEndPattern = '/iterator:\1';
 	const INDICATOR_VariableFormatPattern = '\((?P<format>[^)]+)\)$';
 
 	/**
@@ -52,9 +48,7 @@ abstract class AbstractView {
 	protected $substituteUnknownVariables = TRUE;
 
 	public function __construct() {
-		$this->setRenderingContext(
-			self::createRenderingContext()
-		);
+		$this->setRenderingContext(RenderingContext::create());
 	}
 
 	/**
@@ -79,14 +73,19 @@ abstract class AbstractView {
 	}
 
 	public function getSubstituteUnknownVariables() {
-		return $this->substituteUnknownVariables;
+		return $this->getRenderingContext()->getSetting(
+			RenderingContext::SETTING_SubstituteUnknown
+		);
 	}
 
 	/**
 	 * @param bool $substituteUnknownVariables
 	 */
 	public function setSubstituteUnknownVariables($substituteUnknownVariables) {
-		$this->substituteUnknownVariables = (bool)$substituteUnknownVariables;
+		$this->getRenderingContext()->setSetting(
+			RenderingContext::SETTING_SubstituteUnknown,
+			(bool)$substituteUnknownVariables
+		);
 	}
 
 	/**
@@ -113,45 +112,7 @@ abstract class AbstractView {
 			return $renderingContext->getContent();
 		}
 
-		$this->substituteIterator($renderingContext);
-		$this->substituteVariables($renderingContext);
-
-		return $renderingContext->replace();
-	}
-
-	/**
-	 * @param RenderingContext $renderingContext
-	 */
-	protected function substituteIterator(RenderingContext $renderingContext) {
-		$pattern = preg_quote(self::INDICATOR_Start, '!')
-			. self::INDICATOR_IteratorStartPattern . preg_quote(self::INDICATOR_End, '!')
-				. self::INDICATOR_IteratorInnerPattern
-			. preg_quote(self::INDICATOR_Start, '!')
-				. self::INDICATOR_IteratorEndPattern . preg_quote(self::INDICATOR_End, '!');
-
-		if (preg_match_all('!' . $pattern . '!mis', $renderingContext->getContent(), $matches)) {
-			foreach ($matches[0] as $index => $iteratorPartial) {
-				$iteratorContent = '';
-				$iterator = self::resolveVariable($renderingContext->getVariables(), $matches['path'][$index], FALSE);
-
-				if (is_array($iterator) || $iterator instanceof \Traversable) {
-					foreach ($iterator as $value) {
-						$iteratorVariables = array_merge(
-							(array)$renderingContext->getVariables('iterator'),
-							array($matches['name'][$index] => $value)
-						);
-
-						$iteratorRenderingContext = self::createRenderingContext()
-							->setVariables($renderingContext->getVariables())
-							->setVariable('iterator', $iteratorVariables)
-							->setContent($matches['inner'][$index]);
-						$iteratorContent .= $this->substitute($iteratorRenderingContext);
-					}
-				}
-
-				$renderingContext->addReplacement($iteratorPartial, $iteratorContent);
-			}
-		}
+		return $renderingContext->render();
 	}
 
 	/**
@@ -164,7 +125,7 @@ abstract class AbstractView {
 				$value = self::resolveVariable($renderingContext->getVariables(), $matches['inner'][$index]);
 
 				if ($this->getSubstituteUnknownVariables() || $value !== NULL) {
-					$renderingContext->addReplacement($variablePartial, $value);
+					$renderingContext->addReplacement($variablePartial, (string)$value);
 				}
 			}
 		}
@@ -173,10 +134,9 @@ abstract class AbstractView {
 	/**
 	 * @param array $variables
 	 * @param string $path
-	 * @param boolean $toString
 	 * @return NULL|\DateTime|string
 	 */
-	static public function resolveVariable(array $variables, $path, $toString = TRUE) {
+	static public function resolveVariable(array $variables, $path) {
 		$format = NULL;
 
 		if (preg_match('!' . self::INDICATOR_VariableFormatPattern . '!', $path, $matches)) {
@@ -191,10 +151,6 @@ abstract class AbstractView {
 			$value = $value->format($format);
 		}
 
-		if ($toString) {
-			$value = (string)$value;
-		}
-
 		return $value;
 	}
 
@@ -204,15 +160,6 @@ abstract class AbstractView {
 	 */
 	static public function isSubstitutionRequired($content) {
 		return (strpos($content, self::INDICATOR_Start) !== FALSE && strpos($content, self::INDICATOR_End) !== FALSE);
-	}
-
-	/**
-	 * @return RenderingContext
-	 */
-	static public function createRenderingContext() {
-		return GeneralUtility::makeInstance(
-			'OliverHader\\AlternativeRendering\\RenderingContext'
-		);
 	}
 
 }

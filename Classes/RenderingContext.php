@@ -14,11 +14,15 @@ namespace OliverHader\AlternativeRendering;
  * The TYPO3 project - inspiring people to share!
  */
 
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+
 /**
- * Registry
+ * RenderingContext
  * @author Oliver Hader <oliver.hader@typo3.org>
  */
 class RenderingContext {
+
+	const SETTING_SubstituteUnknown = 'substituteUnknown';
 
 	/**
 	 * @var array
@@ -29,6 +33,11 @@ class RenderingContext {
 	 * @var array
 	 */
 	protected $replacements = array();
+
+	/**
+	 * @var array
+	 */
+	protected $settings = array();
 
 	/**
 	 * @var string
@@ -105,6 +114,14 @@ class RenderingContext {
 	}
 
 	/**
+	 * @param string $search
+	 * @return bool
+	 */
+	public function hasReplacement($search) {
+		return isset($this->replacements[$search]);
+	}
+
+	/**
 	 * @return array
 	 */
 	public function getSearch() {
@@ -116,6 +133,38 @@ class RenderingContext {
 	 */
 	public function getReplace() {
 		return array_values($this->replacements);
+	}
+
+	/**
+	 * @return array
+	 */
+	public function getSettings() {
+		return $this->settings;
+	}
+
+	/**
+	 * @param array $settings
+	 * @return RenderingContext
+	 */
+	public function setSettings(array $settings) {
+		$this->settings = $settings;
+		return $this;
+	}
+
+	/**
+	 * @param string $name
+	 * @return mixed
+	 */
+	public function getSetting($name) {
+		return $this->settings[$name];
+	}
+
+	/**
+	 * @param string $name
+	 * @param mixed $value
+	 */
+	public function setSetting($name, $value) {
+		$this->settings[$name] = $value;
 	}
 
 	/**
@@ -135,6 +184,35 @@ class RenderingContext {
 	}
 
 	/**
+	 * @return RenderingContext
+	 */
+	public function duplicate() {
+		$renderingContext = self::create();
+		$sections = func_get_args();
+
+		if (empty($sections)) {
+			$sections = array(
+				'settings',
+				'variables',
+				'content'
+			);
+		}
+
+		foreach ($sections as $section) {
+			$getMethodName = 'get' . ucfirst($section);
+			$setMethodName = 'set' . ucfirst($section);
+			if (method_exists($this, $getMethodName)
+				&& method_exists($this, $setMethodName)) {
+				$renderingContext->$setMethodName(
+					$this->$getMethodName()
+				);
+			}
+		}
+
+		return $renderingContext;
+	}
+
+	/**
 	 * @return string
 	 */
 	public function replace() {
@@ -146,6 +224,23 @@ class RenderingContext {
 			)
 		);
 		return $this->getContent();
+	}
+
+	/**
+	 * @return string
+	 */
+	public function render() {
+		ProcessorRegistry::getInstance()->processAll($this);
+		return $this->replace();
+	}
+
+	/**
+	 * @return RenderingContext
+	 */
+	static public function create() {
+		return GeneralUtility::makeInstance(
+			'OliverHader\\AlternativeRendering\\RenderingContext'
+		);
 	}
 
 }
