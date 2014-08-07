@@ -23,7 +23,7 @@ use OliverHader\AlternativeRendering\Service\EmogrifyService;
  * EmogrifyHook
  * @author Oliver Hader <oliver.hader@typo3.org>
  */
-class EmogrifyHook implements \TYPO3\CMS\Core\SingletonInterface {
+class EmogrifyHook extends AbstractConfigurationHook implements \TYPO3\CMS\Core\SingletonInterface {
 
 	public function processResources(array $parameters, PageRenderer $pageRenderer) {
 		if (!$this->isEmogrifyEnabled()) {
@@ -61,16 +61,7 @@ class EmogrifyHook implements \TYPO3\CMS\Core\SingletonInterface {
 	 * @return bool
 	 */
 	protected function isEmogrifyEnabled() {
-		$enabled = FALSE;
-
-		$frontendController = $this->getFrontendController();
-		if (isset($frontendController->pSetup['config.']['emogrify'])) {
-			$enabled = (bool)$frontendController->pSetup['config.']['emogrify'];
-		} elseif (isset($frontendController->config['config.']['emogrify'])) {
-			$enabled = (bool)$frontendController->config['config.']['emogrify'];
-		}
-
-		return $enabled;
+		return $this->isConfigurationEnabled('emogrify');
 	}
 
 	/**
@@ -80,13 +71,6 @@ class EmogrifyHook implements \TYPO3\CMS\Core\SingletonInterface {
 		return GeneralUtility::makeInstance(
 			'OliverHader\\AlternativeRendering\\Service\\EmogrifyService'
 		);
-	}
-
-	/**
-	 * @return TypoScriptFrontendController
-	 */
-	protected function getFrontendController() {
-		return $GLOBALS['TSFE'];
 	}
 
 }
