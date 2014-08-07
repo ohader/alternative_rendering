@@ -34,9 +34,9 @@ abstract class AbstractConfigurationHook {
 			$frontendController = $this->getFrontendController();
 		}
 
-		if (isset($frontendController->pSetup['config']['alternative_rendering.'][$propertyName])) {
+		if (is_array($frontendController->pSetup) && isset($frontendController->pSetup['config']['alternative_rendering.'][$propertyName])) {
 			$enabled = (bool)$frontendController->pSetup['config']['alternative_rendering.'][$propertyName];
-		} elseif (isset($frontendController->config['config']['alternative_rendering.'][$propertyName])) {
+		} elseif (is_array($frontendController->config) && isset($frontendController->config['config']['alternative_rendering.'][$propertyName])) {
 			$enabled = (bool)$frontendController->config['config']['alternative_rendering.'][$propertyName];
 		}
 
@@ -55,9 +55,9 @@ abstract class AbstractConfigurationHook {
 			$frontendController = $this->getFrontendController();
 		}
 
-		if (isset($frontendController->pSetup['config']) && isset($frontendController->pSetup['config'][$propertyName])) {
+		if (is_array($frontendController->pSetup) && isset($frontendController->pSetup['config'][$propertyName])) {
 			$scope = 'page';
-		} elseif (isset($frontendController->config['config']) && isset($frontendController->config['config'][$propertyName])) {
+		} elseif (is_array($frontendController->config) && isset($frontendController->config['config'][$propertyName])) {
 			$scope = 'config';
 		}
 
