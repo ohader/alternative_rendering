@@ -162,9 +162,11 @@ class RenderingContext {
 	/**
 	 * @param string $name
 	 * @param mixed $value
+	 * @return RenderingContext
 	 */
 	public function setSetting($name, $value) {
 		$this->settings[$name] = $value;
+		return $this;
 	}
 
 	/**
