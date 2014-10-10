@@ -177,7 +177,37 @@ abstract class AbstractView {
 	 * @return bool
 	 */
 	static public function isSubstitutionRequired($content) {
-		return (strpos($content, self::INDICATOR_Start) !== FALSE && strpos($content, self::INDICATOR_End) !== FALSE);
+		return (
+			strpos($content, self::INDICATOR_Start) !== FALSE
+			&& strpos($content, self::INDICATOR_End) !== FALSE
+			&& self::isPageTypeAllowed()
+		);
+	}
+
+	/**
+	 * @return bool
+	 */
+	static protected function isPageTypeAllowed() {
+		$frontendController = self::getFrontendController();
+
+		if ($frontendController === NULL) {
+			return TRUE;
+		}
+
+		if (is_array($frontendController->pSetup) && isset($frontendController->pSetup['config']['alternative_rendering.']['ignorePageTypes'])) {
+			$ignorePageTypes = $frontendController->pSetup['config']['alternative_rendering.']['ignorePageTypes'];
+		} elseif (is_array($frontendController->config) && isset($frontendController->config['config']['alternative_rendering.']['ignorePageTypes'])) {
+			$ignorePageTypes = $frontendController->config['config']['alternative_rendering.']['ignorePageTypes'];
+		}
+
+		return (empty($ignorePageTypes) || !GeneralUtility::inList($ignorePageTypes, $frontendController->type));
+	}
+
+	/**
+	 * @return NULL|\TYPO3\CMS\Frontend\Controller\TypoScriptFrontendController
+	 */
+	static protected function getFrontendController() {
+		return $GLOBALS['TSFE'];
 	}
 
 }
