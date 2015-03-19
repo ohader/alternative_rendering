@@ -38,8 +38,12 @@ class ProcessorRegistry implements \TYPO3\CMS\Core\SingletonInterface {
 		$this->addFinish('unknownVariable', 'OliverHader\\AlternativeRendering\\Processor\\UnknownVariableProcessor');
 	}
 
+	/**
+	 * @param string $name
+	 * @param string $handlerClassName
+	 */
 	public function addRegular($name, $handlerClassName) {
-		if (isset($this->regularHandlers[$name])) {
+		if (isset($this->regularHandlers[$name]) && !$this->regularHandlers[$name] instanceof $handlerClassName) {
 			throw new \LogicException('Regular handler for "' . $name . '" is already registered', 1407317751);
 		}
 
@@ -52,8 +56,12 @@ class ProcessorRegistry implements \TYPO3\CMS\Core\SingletonInterface {
 		$this->regularHandlers[$name] = $handler;
 	}
 
+	/**
+	 * @param string $name
+	 * @param string $handlerClassName
+	 */
 	public function addFinish($name, $handlerClassName) {
-		if (isset($this->finishHandlers[$name])) {
+		if (isset($this->finishHandlers[$name]) && !$this->finishHandlers[$name] instanceof $handlerClassName) {
 			throw new \LogicException('Finish handler for "' . $name . '" is already registered', 1407317751);
 		}
 
