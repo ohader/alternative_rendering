@@ -15,6 +15,7 @@ namespace OliverHader\AlternativeRendering\View;
  */
 
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use OliverHader\AlternativeRendering\Bootstrap;
 
 /**
  * PageView
@@ -106,8 +107,41 @@ class PageView extends AbstractView {
 		$uri = GeneralUtility::getIndpEnv('TYPO3_SITE_URL') . 'index.php?id=' . $this->pageUid
 			. (!empty($this->pageType) ? '&type=' . $this->pageType : '')
 			. (!empty($this->languageUid) ? '&L=' . $this->languageUid : '');
-		$content = GeneralUtility::getUrl($uri);
+
+		$content = $this->getCachedContent();
+
+		if ($content === NULL) {
+			$content = GeneralUtility::getUrl($uri, 0, array(Bootstrap::HTTP_Header . ': TRUE'));
+		}
+
 		$this->getRenderingContext()->setContent($content);
+	}
+
+	/**
+	 * @return NULL|string
+	 * @throws \TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException
+	 */
+	protected function getCachedContent() {
+		$tagName = Bootstrap::EXTENSION_Key
+			. '_' . $this->pageUid
+			. '-' . $this->pageType
+			. '-' . $this->languageUid;
+		$content = $this->getCacheManager()->getCache('cache_pages')->getByTag($tagName);
+
+		if (empty($content) && empty($content[0]['content'])) {
+			return NULL;
+		}
+
+		return $content[0]['content'];
+	}
+
+	/**
+	 * @return \TYPO3\CMS\Core\Cache\CacheManager
+	 */
+	protected function getCacheManager() {
+		return GeneralUtility::makeInstance(
+			'TYPO3\\CMS\\Core\\Cache\\CacheManager'
+		);
 	}
 
 }

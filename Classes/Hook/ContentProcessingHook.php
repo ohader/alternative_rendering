@@ -18,13 +18,20 @@ use TYPO3\CMS\Core\Page\PageRenderer;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Frontend\Controller\TypoScriptFrontendController;
 use OliverHader\AlternativeRendering\Service\EmogrifyService;
+use OliverHader\AlternativeRendering\Bootstrap;
 
 /**
- * EmogrifyHook
+ * ContentProcessingHook
  * @author Oliver Hader <oliver.hader@typo3.org>
  */
-class EmogrifyHook extends AbstractConfigurationHook implements \TYPO3\CMS\Core\SingletonInterface {
+class ContentProcessingHook extends AbstractConfigurationHook implements \TYPO3\CMS\Core\SingletonInterface {
 
+	/**
+	 * Processes and collects resources (Stylesheets and JavaScripts).
+	 *
+	 * @param array $parameters
+	 * @param PageRenderer $pageRenderer
+	 */
 	public function processResources(array $parameters, PageRenderer $pageRenderer) {
 		if (!$this->isEmogrifyEnabled()) {
 			return;
@@ -46,18 +53,48 @@ class EmogrifyHook extends AbstractConfigurationHook implements \TYPO3\CMS\Core\
 	}
 
 	/**
+	 * Processes the content by either
+	 * + adding an accordant cache tag to avoid the fetching round-trip
+	 * + emogrifying the collected resources
+	 *
 	 * @param array $parameters
 	 * @param TypoScriptFrontendController $frontendController
 	 */
 	public function processContent(array $parameters, TypoScriptFrontendController $frontendController) {
-		if (!$this->isEmogrifyEnabled()) {
-			return;
+		if ($this->hasHttpHeader()) {
+			$tagName = Bootstrap::EXTENSION_Key
+				. '_' . (int)$frontendController->id
+				. '-' . (int)$frontendController->type
+				. '-' . (int)$frontendController->sys_language_uid;
+			$frontendController->addCacheTags(array($tagName));
 		}
 
-		$frontendController->content = $this->getEmogrifyService()->process($frontendController->content);
+		if ($this->isEmogrifyEnabled()) {
+			$frontendController->content = $this->getEmogrifyService()->process($frontendController->content);
+		}
 	}
 
 	/**
+	 * Determines whether the HTTP header is set
+	 * (and thus, whether PageView invoked this request).
+	 *
+	 * @return bool
+	 */
+	protected function hasHttpHeader() {
+		$httpHeaderName = str_replace('-', '_', strtoupper(Bootstrap::HTTP_Header));
+
+		if (!empty($_SERVER[$httpHeaderName]) && $_SERVER[$httpHeaderName] === 'TRUE') {
+			return TRUE;
+		} elseif (!empty($_SERVER['HTTP_' . $httpHeaderName]) && $_SERVER['HTTP_' . $httpHeaderName] === 'TRUE') {
+			return TRUE;
+		}
+
+		return FALSE;
+	}
+
+	/**
+	 * Determines whether emogrifying is enabled in configuration.
+	 *
 	 * @return bool
 	 */
 	protected function isEmogrifyEnabled() {
