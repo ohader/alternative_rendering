@@ -14,6 +14,7 @@ namespace OliverHader\AlternativeRendering\Hook;
  * The TYPO3 project - inspiring people to share!
  */
 
+use TYPO3\CMS\Core\SingletonInterface;
 use TYPO3\CMS\Core\Page\PageRenderer;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Frontend\Controller\TypoScriptFrontendController;
@@ -24,7 +25,7 @@ use OliverHader\AlternativeRendering\Bootstrap;
  * ContentProcessingHook
  * @author Oliver Hader <oliver.hader@typo3.org>
  */
-class ContentProcessingHook extends AbstractConfigurationHook implements \TYPO3\CMS\Core\SingletonInterface {
+class ContentProcessingHook extends AbstractConfigurationHook implements SingletonInterface {
 
 	/**
 	 * Processes and collects resources (Stylesheets and JavaScripts).

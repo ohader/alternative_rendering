@@ -14,13 +14,14 @@ namespace OliverHader\AlternativeRendering;
  * The TYPO3 project - inspiring people to share!
  */
 
+use TYPO3\CMS\Core\SingletonInterface;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
  * ProcessorRegistry
  * @author Oliver Hader <oliver.hader@typo3.org>
  */
-class ProcessorRegistry implements \TYPO3\CMS\Core\SingletonInterface {
+class ProcessorRegistry implements SingletonInterface {
 
 	/**
 	 * @var array|ProcessorInterface[]

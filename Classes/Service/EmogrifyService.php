@@ -14,11 +14,13 @@ namespace OliverHader\AlternativeRendering\Service;
  * The TYPO3 project - inspiring people to share!
  */
 
+use TYPO3\CMS\Core\SingletonInterface;
+
 /**
  * EmogrifyService
  * @author Oliver Hader <oliver.hader@typo3.org>
  */
-class EmogrifyService implements \TYPO3\CMS\Core\SingletonInterface {
+class EmogrifyService implements SingletonInterface {
 
 	/**
 	 * @var \Pelago\Emogrifier
