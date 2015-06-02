@@ -128,7 +128,7 @@ class PageView extends AbstractView {
 			. '-' . $this->languageUid;
 		$content = $this->getCacheManager()->getCache('cache_pages')->getByTag($tagName);
 
-		if (empty($content) && empty($content[0]['content'])) {
+		if (empty($content) || empty($content[0]['content'])) {
 			return NULL;
 		}
 
